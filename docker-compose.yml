@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    volumes:
+      # Mount the downloadable_files directory for sample data
+      - ./downloadable_files:/app/downloadable_files:ro
+      # Optional: Mount for development (comment out for production)
+      # - ./app.py:/app/app.py
+      # - ./parser.py:/app/parser.py
+      # - ./templates:/app/templates
+    environment:
+      - FLASK_ENV=production
+      - FLASK_APP=app.py
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
