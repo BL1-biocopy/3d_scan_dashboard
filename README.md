@@ -1,3 +1,3 @@
-# 3d_scan_dashboard
+# CELLCYTE X Dashboard
 
 A dashboard Flask application to visualize data from the CELLCYTE X instrument.
