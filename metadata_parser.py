@@ -101,3 +101,22 @@ class MetadataParser:
         long_df = long_df[["Well", "Well Group"]]
 
         return long_df
+    
+    def extract_cell_lines(self, long_df:pd.DataFrame) -> pd.DataFrame:
+        """
+        Extract cell lines from the well groups. Assumes that cell lines are 
+        Args:
+            long_df: pd.DataFrame with columns "Well" and "Well Group"
+        Returns:
+            list: List of unique cell lines found in the well groups
+        """
+        cell_lines = []
+        #parse well groups by splitting on _ and taking all possible parts that don't start with numbers, "TPP" or "PPB"
+        for group in long_df["Well Group"].unique():
+            parts = re.split(r'[_\s]+', group)
+            for part in parts:
+                if not re.match(r'^\d', part) and part not in ["TPP", "PPB"] and part != "":
+                    cell_lines.append(part)
+        unique_cell_lines = list(set(cell_lines))
+        return unique_cell_lines
+        

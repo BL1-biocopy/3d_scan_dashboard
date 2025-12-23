@@ -14,7 +14,7 @@ import atexit
 from parser import CytenaProcessor
 
 print("\n" + "="*60)
-print("🚀 CELLCYTE X DASHBOARD - VERSION 2.0 - UPDATED!")
+print("ðŸš€ CELLCYTE X DASHBOARD - VERSION 2.0 - UPDATED!")
 print("="*60)
 
 # Get the absolute path to the application directory
@@ -35,6 +35,7 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
 
 # Store processed data in memory (in production, use Redis or database)
 processed_data = {}
+processed_data_individual = {}  # Store individual well data for plate map
 
 # Cleanup function to remove temp directory on exit
 def cleanup_temp_dir():
@@ -107,6 +108,7 @@ def upload_files():
             
             # Store processed data
             processed_data[session_id] = results_agg
+            processed_data_individual[session_id] = results  # Store individual well data
             
             # Get available options for dropdowns
             available_channels = results_agg['channel'].unique().tolist()
@@ -264,6 +266,39 @@ def get_plot_data():
     except Exception as e:
         return jsonify({'error': f'Error getting plot data: {str(e)}'}), 500
 
+@app.route('/get_plate_map', methods=['POST'])
+def get_plate_map():
+    """Get plate map data for visualization"""
+    try:
+        data = request.json
+        session_id = data.get('session_id')
+        
+        if not session_id or session_id not in processed_data_individual:
+            return jsonify({'error': 'Invalid session or data not found'}), 400
+        
+        df = processed_data_individual[session_id]
+        
+        # Create plate map dictionary
+        plate_map = {}
+        
+        if 'Well' in df.columns and 'Well Group' in df.columns:
+            # Get unique well-group mappings
+            well_group_mapping = df[['Well', 'Well Group']].drop_duplicates()
+            
+            for _, row in well_group_mapping.iterrows():
+                well = row['Well']
+                well_group = row['Well Group']
+                if pd.notna(well) and pd.notna(well_group):
+                    plate_map[well] = str(well_group)
+        
+        return jsonify({
+            'success': True,
+            'plate_map': plate_map
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Error getting plate map: {str(e)}'}), 500
+
 @app.route('/clear_session', methods=['POST'])
 def clear_session():
     """Clear session data and remove temporary files"""
@@ -275,6 +310,8 @@ def clear_session():
             # Remove processed data
             if session_id in processed_data:
                 del processed_data[session_id]
+            if session_id in processed_data_individual:
+                del processed_data_individual[session_id]
             
             # Remove session's temporary files
             session_dir = os.path.join(app.config['UPLOAD_FOLDER'], session_id)

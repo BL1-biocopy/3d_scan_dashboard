@@ -469,6 +469,162 @@
             border-color: var(--primary-light);
             color: white;
         }
+
+        /* Plate Map Styles */
+        .plate-map-container {
+            background: white;
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 1.5rem;
+            border: 1px solid #e9ecef;
+        }
+
+        .plate-map-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--primary-bg);
+        }
+
+        .plate-map-header h5 {
+            margin: 0;
+            color: var(--primary-bg);
+            font-weight: 600;
+        }
+
+        .plate-grid {
+            display: grid;
+            grid-template-columns: 40px repeat(12, 1fr);
+            gap: 4px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .plate-header-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: var(--primary-color);
+            font-size: 0.9rem;
+            padding: 0.5rem;
+        }
+
+        .plate-well {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #dee2e6;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: white;
+            color: var(--primary-color);
+            text-align: center;
+            padding: 2px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .plate-well:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            z-index: 10;
+        }
+
+        .plate-well.filled {
+            background: linear-gradient(135deg, var(--secondary-teal) 0%, var(--secondary-blue) 100%);
+            color: white;
+            border-color: var(--secondary-teal);
+        }
+
+        .plate-well.empty {
+            background: #f8f9fa;
+            color: #adb5bd;
+            border-color: #e9ecef;
+        }
+
+        .well-tooltip {
+            position: absolute;
+            background: var(--primary-bg);
+            color: white;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            white-space: nowrap;
+            z-index: 1000;
+            pointer-events: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            display: none;
+        }
+
+        .well-tooltip::before {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 6px solid transparent;
+            border-top-color: var(--primary-bg);
+        }
+
+        .plate-legend {
+            display: flex;
+            gap: 2rem;
+            justify-content: center;
+            margin-top: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            color: var(--primary-color);
+        }
+
+        .legend-color {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            border: 2px solid #dee2e6;
+        }
+
+        .legend-color.filled {
+            background: linear-gradient(135deg, var(--secondary-teal) 0%, var(--secondary-blue) 100%);
+            border-color: var(--secondary-teal);
+        }
+
+        .legend-color.empty {
+            background: #f8f9fa;
+            border-color: #e9ecef;
+        }
+
+        @media (max-width: 768px) {
+            .plate-grid {
+                gap: 2px;
+                font-size: 0.7rem;
+            }
+
+            .plate-well {
+                font-size: 0.6rem;
+            }
+
+            .plate-header-cell {
+                font-size: 0.75rem;
+                padding: 0.25rem;
+            }
+
+            .plate-map-container {
+                padding: 1rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -542,10 +698,39 @@
                 </div>
             </div>
 
-            <!-- Step 2: Visualization Controls -->
-            <div class="step-card" id="controls-card" style="display: none;">
+            <!-- Step 2: Plate Map -->
+            <div class="step-card" id="plate-map-card" style="display: none;">
                 <div class="step-header">
                     <span class="step-number">2</span>
+                    <h3 class="step-title">Plate Map Preview</h3>
+                </div>
+                <div class="step-body">
+                    <div class="plate-map-container">
+                        <div class="plate-map-header">
+                            <h5>
+                                <i class="bi bi-grid-3x3-gap me-2"></i>
+                                96-Well Plate Layout
+                            </h5>
+                        </div>
+                        <div id="plateMapGrid"></div>
+                        <div class="plate-legend">
+                            <div class="legend-item">
+                                <div class="legend-color filled"></div>
+                                <span>Well with metadata</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color empty"></div>
+                                <span>Empty well</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Step 3: Visualization Controls -->
+            <div class="step-card" id="controls-card" style="display: none;">
+                <div class="step-header">
+                    <span class="step-number">3</span>
                     <h3 class="step-title">Visualization</h3>
                 </div>
                 <div class="step-body">
@@ -668,6 +853,7 @@
         let selectedWellGroups = [];
         let wellGroupsWithData = []; // Track which well groups have data for current selection
         let scanId = null; // Store scan ID
+        let plateMapData = {}; // Store plate map data
 
         // File input handling - auto upload when files selected
         document.getElementById('fileInput').addEventListener('change', function(e) {
@@ -733,11 +919,16 @@
                         `<span class="badge" style="background: var(--primary-bg); font-size: 1rem; padding: 0.5rem 1rem;">${scanId}</span>`;
 
                     showAlert(`Successfully processed ${result.uploaded_files.length} files!`, 'success');
+                    
+                    // Load and display plate map
+                    await loadPlateMap();
+                    
                     populateControls();
+                    document.getElementById('plate-map-card').style.display = 'block';
                     document.getElementById('controls-card').style.display = 'block';
                     
-                    // Scroll to controls
-                    document.getElementById('controls-card').scrollIntoView({ behavior: 'smooth' });
+                    // Scroll to plate map
+                    document.getElementById('plate-map-card').scrollIntoView({ behavior: 'smooth' });
                 } else {
                     showAlert(result.error || 'Upload failed', 'danger');
                 }
@@ -746,6 +937,118 @@
             } finally {
                 showLoading(false);
             }
+        }
+
+        async function loadPlateMap() {
+            try {
+                const response = await fetch('get_plate_map', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        session_id: sessionId
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    plateMapData = result.plate_map;
+                    displayPlateMap(plateMapData);
+                } else {
+                    console.error('Error loading plate map:', result.error);
+                }
+            } catch (error) {
+                console.error('Error loading plate map:', error);
+            }
+        }
+
+        function displayPlateMap(plateMap) {
+            const plateGrid = document.getElementById('plateMapGrid');
+            plateGrid.innerHTML = '';
+            plateGrid.className = 'plate-grid';
+
+            // Create tooltip element
+            const tooltip = document.createElement('div');
+            tooltip.className = 'well-tooltip';
+            document.body.appendChild(tooltip);
+
+            // Add empty top-left corner
+            const cornerCell = document.createElement('div');
+            cornerCell.className = 'plate-header-cell';
+            plateGrid.appendChild(cornerCell);
+
+            // Add column headers (1-12)
+            for (let col = 1; col <= 12; col++) {
+                const headerCell = document.createElement('div');
+                headerCell.className = 'plate-header-cell';
+                headerCell.textContent = col;
+                plateGrid.appendChild(headerCell);
+            }
+
+            // Add rows (A-H) with wells
+            const rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+            rows.forEach(row => {
+                // Add row header
+                const rowHeaderCell = document.createElement('div');
+                rowHeaderCell.className = 'plate-header-cell';
+                rowHeaderCell.textContent = row;
+                plateGrid.appendChild(rowHeaderCell);
+
+                // Add wells for this row
+                for (let col = 1; col <= 12; col++) {
+                    const wellId = `${row}${col}`;
+                    const wellCell = document.createElement('div');
+                    wellCell.className = 'plate-well';
+                    wellCell.dataset.well = wellId;
+
+                    if (plateMap[wellId]) {
+                        wellCell.classList.add('filled');
+                        const wellGroup = plateMap[wellId];
+                        // Truncate long names for display
+                        const displayText = wellGroup.length > 12 ? wellGroup.substring(0, 10) + '...' : wellGroup;
+                        wellCell.textContent = displayText;
+
+                        // Add hover effect with tooltip
+                        wellCell.addEventListener('mouseenter', (e) => {
+                            tooltip.textContent = `${wellId}: ${wellGroup}`;
+                            tooltip.style.display = 'block';
+                            updateTooltipPosition(e, tooltip);
+                        });
+
+                        wellCell.addEventListener('mousemove', (e) => {
+                            updateTooltipPosition(e, tooltip);
+                        });
+
+                        wellCell.addEventListener('mouseleave', () => {
+                            tooltip.style.display = 'none';
+                        });
+                    } else {
+                        wellCell.classList.add('empty');
+                        wellCell.textContent = wellId;
+                    }
+
+                    plateGrid.appendChild(wellCell);
+                }
+            });
+        }
+
+        function updateTooltipPosition(event, tooltip) {
+            const offset = 10;
+            let x = event.clientX + offset;
+            let y = event.clientY - tooltip.offsetHeight - offset;
+
+            // Adjust if tooltip goes off screen
+            if (x + tooltip.offsetWidth > window.innerWidth) {
+                x = event.clientX - tooltip.offsetWidth - offset;
+            }
+            if (y < 0) {
+                y = event.clientY + offset;
+            }
+
+            tooltip.style.left = x + 'px';
+            tooltip.style.top = y + 'px';
         }
 
         function populateControls() {
@@ -1213,11 +1516,22 @@
                 scanId = null;
                 selectedFiles = [];
                 selectedWellGroups = [];
+                plateMapData = {};
                 document.getElementById('fileInput').value = '';
                 document.getElementById('experimentIdInput').value = '';
                 document.getElementById('scanIdDisplay').innerHTML = '<span class="badge" style="background: var(--primary-bg); font-size: 1rem; padding: 0.5rem 1rem;">-</span>';
+                document.getElementById('plate-map-card').style.display = 'none';
                 document.getElementById('controls-card').style.display = 'none';
                 document.getElementById('chartContainer').style.display = 'none';
+                
+                // Clear plate map
+                document.getElementById('plateMapGrid').innerHTML = '';
+                
+                // Remove tooltip if exists
+                const tooltip = document.querySelector('.well-tooltip');
+                if (tooltip) {
+                    tooltip.remove();
+                }
                 
                 if (chart) {
                     chart.destroy();
